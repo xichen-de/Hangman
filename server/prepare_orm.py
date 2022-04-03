@@ -3,7 +3,7 @@ import os
 
 from flask import Flask
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import sessionmaker
 
 from server.hangman_orm import base_usage, base_games, Usage
 from server.util import get_config, get_project_root
@@ -18,7 +18,7 @@ def init_db():
     base_usage.metadata.create_all(db_usage)
     db_games = create_engine(config['DB_GAMES'])
     base_games.metadata.create_all(db_games)
-    session = Session(db_usage)
+    session = sessionmaker(db_usage)()
     if session.query(Usage).count() == 0:
         data = []
         reader = csv.reader(open(os.path.join(get_project_root(), "data/usages.csv"), encoding='utf8'))
