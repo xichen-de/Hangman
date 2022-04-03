@@ -1,6 +1,11 @@
+import datetime
 import os
 
 import yaml
+
+
+def get_project_root():
+    return os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 def get_config(env, config_resource):
@@ -16,3 +21,12 @@ def get_config(env, config_resource):
         if isinstance(value, str) and value.startswith('env:'):
             config_dict[key] = os.environ[value[4:]]
     return config_dict
+
+
+def date_to_ordinal(dt):
+    if dt is None:
+        return None
+    elif isinstance(dt, datetime.datetime):
+        return dt.toordinal()
+    else:
+        return 'unknown'
