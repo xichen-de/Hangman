@@ -3,12 +3,13 @@ from sqlalchemy.orm import declarative_base
 
 meta = MetaData()
 base_games = declarative_base(metadata=meta)
+base_usage = declarative_base(metadata=meta)
 
 
-class Usage(base_games):
+class Usage(base_usage):
     __tablename__ = 'usage'
     usage_id = Column(types.Integer, primary_key=True)
-    language = Column(types.Enum("en", "de", name="language_codes"), nullable=False)
+    language = Column(types.Enum("en", "es", "fr", name='language_codes'), nullable=False)
     secret_word = Column(types.String(length=25), nullable=False)
     usage = Column(types.String(length=500), nullable=False)
     source = Column(types.String(length=100))

@@ -2,3 +2,4 @@
 /venv/
 /.idea/
 /server/hangman.db
+/server/usages.db

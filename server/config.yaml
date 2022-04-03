@@ -1,2 +1,7 @@
 dev_lite:
-  database: sqlite:///server/hangman.db
+  DB_USAGE: sqlite:///server/usages.db
+  DB_GAMES: sqlite:///server/hangman.db
+
+dev_postgres:
+  DB_USAGE: sqlite:///server/usages.db
+  DB_GAMES: postgresql://root:1234@localhost:5432/hangman
