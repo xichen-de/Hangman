@@ -1,0 +1,2 @@
+dev_lite:
+  database: sqlite:///server/hangman.db
