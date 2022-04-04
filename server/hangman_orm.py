@@ -41,12 +41,12 @@ class User(base_games):
         d[key] = d.get(key, 0) - 1
         setattr(self, field, json.dumps(d))
 
-    def _game_started(self, lang):
+    def game_started(self, lang):
         self.num_games = (self.num_games or 0) + 1
         self._incr_json_field('outcomes', 'active')
         self._incr_json_field('by_lang', lang)
 
-    def _game_ended(self, outcome, time_delta):
+    def game_ended(self, outcome, time_delta):
         self._decr_json_field('outcomes', 'active')
         self._incr_json_field('outcomes', outcome)
         self.total_time = time_delta + (self.total_time or datetime.timedelta(0))
@@ -64,7 +64,7 @@ class Game(base_games):
     start_time = Column(types.DateTime)
     end_time = Column(types.DateTime)
 
-    def _result(self):
+    def result(self):
         if self.bad_guesses == 6:
             return 'lost'
         elif '_' not in self.reveal_word:
@@ -72,10 +72,10 @@ class Game(base_games):
         else:
             return 'active'
 
-    def _to_dict(self):
+    def to_dict(self):
         as_dict = {k: v for k, v in self.__dict__.items()
                    if not k.startswith('_')}
-        as_dict['result'] = self._result()
+        as_dict['result'] = self.result()
         as_dict['start_time'] = date_to_ordinal(as_dict.get('start_time'))
         as_dict['end_time'] = date_to_ordinal(as_dict.get('end_time'))
         return as_dict

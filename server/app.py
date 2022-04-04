@@ -42,7 +42,7 @@ class Games(Resource):
             g.games_db.add(user)
             g.games_db.commit()
             user = g.games_db.query(User).filter(User.user_name == name).one()
-        user._game_started(lang)
+        user.game_started(lang)
 
         # select a usage example
         usage = g.usage_db.query(Usage).filter(
@@ -79,7 +79,7 @@ class OneGame(Resource):
         usage = g.usage_db.query(Usage).filter(Usage.usage_id == game.usage_id).one()
 
         # return game state
-        game_dict = game._to_dict()
+        game_dict = game.to_dict()
         game_dict['usage'] = usage.usage.format(word='_' * len(usage.secret_word))
         game_dict['lang'] = usage.language
         game_dict['source'] = usage.source
@@ -91,7 +91,7 @@ class OneGame(Resource):
         game = g.games_db.query(Game).filter(Game.game_id == game_id).one_or_none()
         if game is None:
             games_api.abort(404, 'Game with id {} does not exist'.format(game_id))
-        if game._result() != 'active':
+        if game.result() != 'active':
             games_api.abort(403, 'Game with id {} is over'.format(game_id))
         if ('letter' not in games_api.payload or
                 not games_api.payload['letter'].isalpha() or
@@ -111,14 +111,14 @@ class OneGame(Resource):
             game.bad_guesses += 1
 
         # if game is over, update the user record
-        outcome = game._result()
+        outcome = game.result()
         if outcome != 'active':
             user = g.games_db.query(User).filter(User.user_id == game.player).one()
             game.end_time = datetime.datetime.now()
-            user._game_ended(outcome, game.end_time - game.start_time)
+            user.game_ended(outcome, game.end_time - game.start_time)
 
             # return the modified game state
-        game_dict = game._to_dict()
+        game_dict = game.to_dict()
         game_dict['usage'] = usage.usage.format(word='_' * len(usage.secret_word))
         game_dict['lang'] = usage.language
         game_dict['source'] = usage.source
