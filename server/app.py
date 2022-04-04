@@ -1,10 +1,13 @@
+import datetime
+import uuid
+
 from flask import Flask, g
 from flask_cors import CORS
 from flask_restx import Namespace, Resource, Api
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, func
 from sqlalchemy.orm import sessionmaker
 
-from server.hangman_orm import Usage
+from server.hangman_orm import Usage, User, Game
 from server.util import get_config
 
 games_api = Namespace('games', description='Creating and playing games')
@@ -14,9 +17,50 @@ app = Flask(__name__)
 @games_api.route('')
 class Games(Resource):
     def post(self):
-        """Create a new game and return the game id"""
-        num_games = g.usage_db.query(Usage).count()
-        return {'message': 'games POST under construction - ' + str(num_games) + ' games'}
+        # check input is valid
+        if not (games_api.payload and
+                'username' in games_api.payload and
+                'language' in games_api.payload):
+            games_api.abort(400, 'New game POST requires username and language')
+        lang = games_api.payload['language']
+        name = games_api.payload['username']
+        user_id = str(uuid.uuid3(uuid.NAMESPACE_URL, name))
+        if lang not in self.valid_langs:
+            return {'message': 'New game POST language must be from ' +
+                               ', '.join(Games.valid_langs)}, 400
+
+        # if user does not exist, create user; get user id
+        user = g.games_db.query(User).filter(User.user_id == user_id).one_or_none()
+        if user is None:
+            user = User(
+                user_id=user_id,
+                user_name=name,
+                first_time=datetime.datetime.now(),
+            )
+            g.games_db.add(user)
+            g.games_db.commit()
+            user = g.games_db.query(User).filter(User.user_name == name).one()
+        user._game_started(lang)
+
+        # select a usage example
+        usage = g.usage_db.query(Usage).filter(
+            Usage.language == lang
+        ).order_by(func.random()).first()
+
+        # create the new game
+        new_game_id = str(uuid.uuid4())
+        new_game = Game(
+            game_id=new_game_id,
+            player=user.user_id,
+            usage_id=usage.usage_id,
+            bad_guesses=0,
+            reveal_word='_' * len(usage.secret_word),
+            start_time=datetime.datetime.now()
+        )
+        g.games_db.add(new_game)
+        g.games_db.commit()
+
+        return {'message': 'success', 'game_id': new_game_id}
 
 
 @games_api.route('/<game_id>')
