@@ -16,6 +16,8 @@ app = Flask(__name__)
 
 @games_api.route('')
 class Games(Resource):
+    valid_langs = ('en', 'es', 'fr')
+
     def post(self):
         # check input is valid
         if not (games_api.payload and
