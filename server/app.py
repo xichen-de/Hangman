@@ -68,12 +68,66 @@ class Games(Resource):
 @games_api.route('/<game_id>')
 class OneGame(Resource):
     def get(self, game_id):
-        """Get the state of the game"""
-        return {'message': 'Game GET under construction'}
+        # check input is valid
+        game = g.games_db.query(Game).filter(Game.game_id == game_id).one_or_none()
+
+        # if game does not exist, produce error code
+        if game is None:
+            games_api.abort(404, 'Game with id {} does not exist'.format(game_id))
+
+        # get usage record because it contains the language and usage example
+        usage = g.usage_db.query(Usage).filter(Usage.usage_id == game.usage_id).one()
+
+        # return game state
+        game_dict = game._to_dict()
+        game_dict['usage'] = usage.usage.format(word='_' * len(usage.secret_word))
+        game_dict['lang'] = usage.language
+        game_dict['source'] = usage.source
+
+        return game_dict
 
     def put(self, game_id):
-        """Guess a letter and update the game state accordingly"""
-        return {'message': 'Game PUT under construction'}
+        # check input is valid; return error if game non-existent or inactive
+        game = g.games_db.query(Game).filter(Game.game_id == game_id).one_or_none()
+        if game is None:
+            games_api.abort(404, 'Game with id {} does not exist'.format(game_id))
+        if game._result() != 'active':
+            games_api.abort(403, 'Game with id {} is over'.format(game_id))
+        if ('letter' not in games_api.payload or
+                not games_api.payload['letter'].isalpha() or
+                len(games_api.payload['letter']) != 1):
+            games_api.abort(400, 'PUT requires one alphabetic character in "letter" field')
+        letter = games_api.payload['letter'].lower()
+
+        # update game state according to guess
+        if letter in game.guessed:  # check for repeated guess
+            games_api.abort(403, 'Letter {} was already guessed'.format(letter))
+        game.guessed = game.guessed + letter
+        usage = g.usage_db.query(Usage).filter(Usage.usage_id == game.usage_id).one()
+        if letter in usage.secret_word.lower():
+            game.reveal_word = ''.join([l if l.lower() in game.guessed else '_'
+                                        for l in usage.secret_word])
+        else:
+            game.bad_guesses += 1
+
+        # if game is over, update the user record
+        outcome = game._result()
+        if outcome != 'active':
+            user = g.games_db.query(User).filter(User.user_id == game.player).one()
+            game.end_time = datetime.datetime.now()
+            user._game_ended(outcome, game.end_time - game.start_time)
+
+            # return the modified game state
+        game_dict = game._to_dict()
+        game_dict['usage'] = usage.usage.format(word='_' * len(usage.secret_word))
+        game_dict['lang'] = usage.language
+        game_dict['source'] = usage.source
+        if outcome != 'active':
+            game_dict['secret_word'] = usage.secret_word
+
+        g.games_db.commit()
+
+        return game_dict
 
     def delete(self, game_id):
         """End the game, delete the record"""
